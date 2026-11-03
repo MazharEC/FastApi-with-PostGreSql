@@ -35,3 +35,27 @@ def create_course(course:schemas.CourseCreate, db: Session = Depends(get_db), cu
     db.commit()
     db.refresh(new_course)
     return new_course
+
+
+
+@router.get("/", response_model= List[schemas.CourseResponse])
+def course(db:Session = Depends(get_db), current_user: models.User = Depends(oauth2.get_current_user), limit: int = 6, skip: int = 0, search: Optional[str]=""):
+    # courses = db.query(models.Course).all()
+    courses = db.query(models.Course).filter(models.Course.creator_id == current_user.id).filter(models.Course.name.contains(search)).limit(limit).offset(skip).all()
+    return courses
+
+
+
+@router.get("/{id}", response_model=schemas.CourseResponse)
+def aiquest_course(id:int, db: Session = Depends(get_db), current_user: models.User = Depends(oauth2.get_current_user)):
+    course = db.query(models.Course).filter(models.Course.id == id).first()
+    if not course:
+        raise HTTPException(
+            status_code = status.HTTP_404_NOT_FOUND,
+            detail= f"Course with id:{id} was not found"
+        )
+    if course.creator_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized action")
+    return course
+
+
