@@ -1,12 +1,17 @@
-from fastapi import FastAPI, HTTPException, status, Response
+from fastapi import FastAPI, HTTPException, status, Response, Depends
 from pydantic import BaseModel, HttpUrl
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import time
+from . import models
+from sqlalchemy.orm import Session
+from . database import engine, get_db
 
 
 
 app = FastAPI()
+
+models.Base.metadata.create_all(bind=engine)
 
 #define request body schema
 
@@ -17,9 +22,15 @@ class Course(BaseModel):
     website: HttpUrl
 
 
+class Book(BaseModel):
+    name: str
+    author: str
+    description: str | None = None
+    dept: str
+
 while True:
     try:
-        conn = psycopg2.connect(host ="localhost", database = "postgres", user = 'Mazhar', password = password, cursor_factory=RealDictCursor)
+        conn = psycopg2.connect(host ="localhost", database = "postgres", user = "postgres", password =pasword, cursor_factory=RealDictCursor)
         cursor = conn.cursor()
         print('Successfully connected Database')
         break
@@ -89,3 +100,22 @@ def update_course(id: int, course: Course):
     if update_course == None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"course with id: {id} does not exist")
     return {"data": update_course}
+
+
+@app.post("/books")
+def create_book(book: Book, db: Session = Depends(get_db)):
+    new_book = models.Book(
+        name=book.name,
+        author=book.author,
+        description=book.description,
+        dept=book.dept
+    )
+    db.add(new_book)
+    db.commit()
+    db.refresh(new_book)
+    return new_book
+
+
+@app.get("/books")
+def book(db: Session = Depends(get_db)):
+    return {"status": "sqlalchemy ORM working"}
