@@ -30,7 +30,7 @@ class Book(BaseModel):
 
 while True:
     try:
-        conn = psycopg2.connect(host ="localhost", database = "postgres", user = "postgres", password =pasword, cursor_factory=RealDictCursor)
+        conn = psycopg2.connect(host ="localhost", database = "postgres", user = "postgres", password =pswrd, cursor_factory=RealDictCursor)
         cursor = conn.cursor()
         print('Successfully connected Database')
         break
@@ -116,6 +116,43 @@ def create_book(book: Book, db: Session = Depends(get_db)):
     return new_book
 
 
-@app.get("/books")
-def book(db: Session = Depends(get_db)):
-    return {"status": "sqlalchemy ORM working"}
+@app.get("/books/{id}")
+def get_book(id: int, db: Session = Depends(get_db)):
+    book = db.query(models.Book).filter(models.Book.id == id).first()
+    if not book:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Book with id: {id} was not found",
+        )
+    return {"Book details": book}
+
+@app.put("/books/{id}")
+def update_book(id: int, updated_book: Book, db: Session = Depends(get_db)):
+    book_query = db.query(models.Book).filter(models.Book.id == id)
+    book = book_query.first()
+    if not book:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Book with id: {id} does not exist",
+        )
+    book_query.update(updated_book.model_dump(), synchronize_session=False)
+    db.commit()
+    db.refresh(book)
+    return book
+
+
+@app.delete("/delete_book/{id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_book(id: int, db: Session = Depends(get_db)):
+    book_query = db.query(models.Book).filter(models.Book.id == id)
+    book = book_query.first()
+    if not book:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Book with id: {id} does not exist",
+        )
+    book_query.delete(synchronize_session=False)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+    
