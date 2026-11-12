@@ -1,29 +1,23 @@
-from fastapi import FastAPI, HTTPException, status, Response, Depends
-import psycopg2
-from psycopg2.extras import RealDictCursor
-import time
-from . import models, schemas
-from sqlalchemy.orm import Session
-from . database import engine, get_db
-from typing import List
-
+from fastapi import FastAPI
+from .routers import user, book
 
 
 app = FastAPI()
 
-models.Base.metadata.create_all(bind=engine)
+app.include_router(book.router)
+app.include_router(user.router)
 
 
-while True:
-    try:
-        conn = psycopg2.connect(host ="localhost", database = "postgres", user = "postgres", password =pasword, cursor_factory=RealDictCursor)
-        cursor = conn.cursor()
-        print('Successfully connected Database')
-        break
-    except Exception as error:
-        print('Database connection failed')
-        print("Error:", error)
-        time.sleep(2)
+# while True:
+#     try:
+#         conn = psycopg2.connect(host ="localhost", database = "postgres", user = "postgres", password =password, cursor_factory=RealDictCursor)
+#         cursor = conn.cursor()
+#         print('Successfully connected Database')
+#         break
+#     except Exception as error:
+#         print('Database connection failed')
+#         print("Error:", error)
+#         time.sleep(2)
 
 
 # @app.post("/post")
@@ -88,66 +82,3 @@ while True:
 #     return {"data": update_course}
 
 
-@app.post("/books", response_model=schemas.BookResponse)
-def create_book(book: schemas.BookCreate, db: Session = Depends(get_db)):
-    new_book = models.Book(**book.model_dump())
-    db.add(new_book)
-    db.commit()
-    db.refresh(new_book)
-    return new_book
-
-@app.get("/books", response_model=List[schemas.BookResponse])
-def book(db:Session = Depends(get_db)):
-    books = db.query(models.Book).all()
-    return books
-
-
-@app.get("/books/{id}", response_model= schemas.BookResponse)
-def get_book(id: int, db: Session = Depends(get_db)):
-    book = db.query(models.Book).filter(models.Book.id == id).first()
-    if not book:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Book with id: {id} was not found",
-        )
-    return book
-
-@app.put("/books/{id}", response_model=schemas.BookResponse)
-def update_book(id: int, updated_book: schemas.BookCreate, db: Session = Depends(get_db)):
-    book_query = db.query(models.Book).filter(models.Book.id == id)
-    book = book_query.first()
-    if not book:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Book with id: {id} does not exist",
-        )
-    book_query.update(updated_book.model_dump(), synchronize_session=False)
-    db.commit()
-    db.refresh(book)
-    return book
-
-
-@app.delete("/delete_book/{id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_book(id: int, db: Session = Depends(get_db)):
-    book_query = db.query(models.Book).filter(models.Book.id == id)
-    book = book_query.first()
-    if not book:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Book with id: {id} does not exist",
-        )
-    book_query.delete(synchronize_session=False)
-    db.commit()
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-
-
-#User table related codes start form here
-
-@app.post("/users", status_code=status.HTTP_201_CREATED, response_model=schemas.UserResponse)
-def library_user(user: schemas.UserCreate, db:Session=Depends(get_db)):
-    new_user = models.User(**user.model_dump())
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    return new_user
