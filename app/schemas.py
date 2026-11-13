@@ -18,6 +18,7 @@ class BookCreate(BaseModel):
 
 class BookResponse(BookCreate):
     id: int
+    creator_id : int
 
     class config:
         orm_model = True

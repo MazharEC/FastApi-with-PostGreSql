@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer,String, Float, TIMESTAMP, text
+from sqlalchemy import Column, Integer,String, Float, TIMESTAMP, text, ForeignKey
 from . database import Base
 
 class Book(Base):
@@ -8,6 +8,7 @@ class Book(Base):
     author= Column(String, nullable=False)
     description = Column(String, nullable=True)
     dept= Column(String, nullable=False)
+    creator_id = Column(Integer, ForeignKey("users.id", ondelete= "CASCADE"), nullable=False)
     
 
 class User(Base):
