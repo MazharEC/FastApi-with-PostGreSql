@@ -1,18 +1,18 @@
 from fastapi import FastAPI, HTTPException, status, Response, Depends, APIRouter
-import psycopg2
 from psycopg2.extras import RealDictCursor
 import time
 from .. import models, schemas, utils
 from sqlalchemy.orm import Session
-from .. database import engine, get_db
+from .. database import get_db
 from typing import List
+from .. import oauth2
 
 router = APIRouter(
     prefix="/books"
 )
 
 @router.post("/", response_model=schemas.BookResponse)
-def create_book(book: schemas.BookCreate, db: Session = Depends(get_db)):
+def create_book(book: schemas.BookCreate, db: Session = Depends(get_db), current_user: models.User = Depends(oauth2.get_current_user)):
     new_book = models.Book(**book.model_dump())
     db.add(new_book)
     db.commit()
@@ -20,13 +20,13 @@ def create_book(book: schemas.BookCreate, db: Session = Depends(get_db)):
     return new_book
 
 @router.get("/", response_model=List[schemas.BookResponse])
-def book(db:Session = Depends(get_db)):
+def book(db:Session = Depends(get_db),  current_user: models.User = Depends(oauth2.get_current_user)):
     books = db.query(models.Book).all()
     return books
 
 
 @router.get("/{id}", response_model= schemas.BookResponse)
-def get_book(id: int, db: Session = Depends(get_db)):
+def get_book(id: int, db: Session = Depends(get_db), current_user: models.User = Depends(oauth2.get_current_user)):
     book = db.query(models.Book).filter(models.Book.id == id).first()
     if not book:
         raise HTTPException(
@@ -36,7 +36,7 @@ def get_book(id: int, db: Session = Depends(get_db)):
     return book
 
 @router.put("/{id}", response_model=schemas.BookResponse)
-def update_book(id: int, updated_book: schemas.BookCreate, db: Session = Depends(get_db)):
+def update_book(id: int, updated_book: schemas.BookCreate, db: Session = Depends(get_db), current_user: models.User = Depends(oauth2.get_current_user)):
     book_query = db.query(models.Book).filter(models.Book.id == id)
     book = book_query.first()
     if not book:
@@ -51,7 +51,7 @@ def update_book(id: int, updated_book: schemas.BookCreate, db: Session = Depends
 
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_book(id: int, db: Session = Depends(get_db)):
+def delete_book(id: int, db: Session = Depends(get_db), current_user: models.User = Depends(oauth2.get_current_user)):
     book_query = db.query(models.Book).filter(models.Book.id == id)
     book = book_query.first()
     if not book:
